@@ -1,0 +1,58 @@
+{
+  "name": "vemi",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "a tiny, type-safe content compiler.",
+  "homepage": "https://github.com/fatihguzeldev/vemi#readme",
+  "bugs": {
+    "url": "https://github.com/fatihguzeldev/vemi/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fatihguzeldev/vemi.git"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "license": "ISC",
+  "author": {
+    "name": "fatih guzel",
+    "email": "hello@fatihguzel.dev",
+    "url": "https://fatihguzel.dev"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "prepare": "husky",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "20.4.2",
+    "@commitlint/config-conventional": "20.4.2",
+    "@typescript-eslint/eslint-plugin": "8.56.0",
+    "@typescript-eslint/parser": "8.56.0",
+    "eslint": "10.0.0",
+    "husky": "9.1.7",
+    "lint-staged": "16.2.7",
+    "prettier": "3.8.1",
+    "typescript": "5.9.3"
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
+}
