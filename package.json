@@ -29,7 +29,7 @@
     "url": "https://fatihguzel.dev"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -41,12 +41,13 @@
   "devDependencies": {
     "@commitlint/cli": "20.4.2",
     "@commitlint/config-conventional": "20.4.2",
-    "@typescript-eslint/eslint-plugin": "8.56.0",
-    "@typescript-eslint/parser": "8.56.0",
+    "@typescript-eslint/eslint-plugin": "6.15.0",
+    "@typescript-eslint/parser": "6.15.0",
     "eslint": "10.0.0",
     "husky": "9.1.7",
     "lint-staged": "16.2.7",
     "prettier": "3.8.1",
+    "tsc-alias": "1.8.16",
     "typescript": "5.9.3",
     "vitest": "4.0.18"
   },
