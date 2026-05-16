@@ -1,1 +1,4 @@
-export {}
+export { parseDocument } from 'src/frontend/parser/parse-document.js'
+export { ParseError } from 'src/errors/parse-error.js'
+export type { Root, BlockNode, InlineNode } from 'src/types/ast.js'
+export type { SourceSpan, SourcePosition } from 'src/types/tokens.js'

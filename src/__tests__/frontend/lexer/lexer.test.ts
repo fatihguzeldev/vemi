@@ -1,41 +1,50 @@
 import { describe, it, expect } from 'vitest'
-import { Lexer } from '../../../frontend/lexer/lexer.js'
-import type { BaseToken, SourcePosition } from 'src/types/tokens.js'
+import { Lexer } from 'src/frontend/lexer/lexer.js'
+import { SourceContext } from 'src/frontend/source-context.js'
+import type { BaseToken, SourceSpan } from 'src/types/tokens.js'
 
 type TestToken = BaseToken<'test'>
 
 /**
  * concrete lexer used to test base Lexer behavior. exposes protected methods
- * so we can assert peek, advance, match, matchString, position, and tokenize loop.
+ * so we can assert peek, consumeChar, matchChar, matchString, offsets, and tokenize loop.
  */
 class TestableLexer extends Lexer<TestToken> {
+  constructor(source: string, rangeStart = 0, rangeEnd = source.length) {
+    super(new SourceContext(source), { start: rangeStart, end: rangeEnd })
+  }
+
   protected scanToken(): void {
     if (this.isAtEnd()) return
 
-    const pos = this.getPosition()
+    const start = this.offset()
 
-    this.advance()
-    this.emit<TestToken>({ type: 'test', position: pos })
+    this.consumeChar()
+    this.emit<TestToken>({ type: 'test', span: this.spanFrom(start) })
   }
 
   public testPeek(offset?: number): string {
     return this.peek(offset)
   }
 
-  public testAdvance(): string {
-    return this.advance()
+  public testConsumeChar(): string {
+    return this.consumeChar()
   }
 
-  public testMatch(expected: string): boolean {
-    return this.match(expected)
+  public testMatchChar(expected: string): boolean {
+    return this.matchChar(expected)
   }
 
   public testMatchString(expected: string): boolean {
     return this.matchString(expected)
   }
 
-  public testGetPosition(): SourcePosition {
-    return this.getPosition()
+  public testOffset(): number {
+    return this.offset()
+  }
+
+  public testSpanFrom(start: number): SourceSpan {
+    return this.spanFrom(start)
   }
 
   public testIsAtEnd(): boolean {
@@ -57,7 +66,7 @@ describe('Lexer (base)', () => {
 
     it('becomes true after advancing past the last character', () => {
       const lexer = new TestableLexer('a')
-      lexer.testAdvance()
+      lexer.testConsumeChar()
       expect(lexer.testIsAtEnd()).toBe(true)
     })
   })
@@ -85,57 +94,57 @@ describe('Lexer (base)', () => {
     })
   })
 
-  describe('advance', () => {
-    it('returns current character and moves position forward', () => {
+  describe('consumeChar', () => {
+    it('returns current character and moves the cursor forward', () => {
       const lexer = new TestableLexer('ab')
-      expect(lexer.testAdvance()).toBe('a')
+      expect(lexer.testConsumeChar()).toBe('a')
       expect(lexer.testPeek(0)).toBe('b')
-      expect(lexer.testAdvance()).toBe('b')
+      expect(lexer.testConsumeChar()).toBe('b')
       expect(lexer.testIsAtEnd()).toBe(true)
     })
 
     it('returns \\0 when already at end and does not move', () => {
       const lexer = new TestableLexer('a')
-      lexer.testAdvance()
-      expect(lexer.testAdvance()).toBe('\0')
+      lexer.testConsumeChar()
+      expect(lexer.testConsumeChar()).toBe('\0')
       expect(lexer.testIsAtEnd()).toBe(true)
     })
 
-    it('increments column for non-newline characters', () => {
+    it('tracks only the current source offset for non-newline characters', () => {
       const lexer = new TestableLexer('ab')
-      expect(lexer.testGetPosition()).toEqual({ line: 1, column: 1 })
-      lexer.testAdvance()
-      expect(lexer.testGetPosition()).toEqual({ line: 1, column: 2 })
-      lexer.testAdvance()
-      expect(lexer.testGetPosition()).toEqual({ line: 1, column: 3 })
+      expect(lexer.testOffset()).toBe(0)
+      lexer.testConsumeChar()
+      expect(lexer.testOffset()).toBe(1)
+      lexer.testConsumeChar()
+      expect(lexer.testOffset()).toBe(2)
     })
 
-    it('increments line and resets column to 1 on newline', () => {
+    it('does not special-case newline in the hot advance path', () => {
       const lexer = new TestableLexer('a\nb')
-      lexer.testAdvance()
-      expect(lexer.testGetPosition()).toEqual({ line: 1, column: 2 })
-      lexer.testAdvance()
-      expect(lexer.testGetPosition()).toEqual({ line: 2, column: 1 })
+      lexer.testConsumeChar()
+      expect(lexer.testOffset()).toBe(1)
+      lexer.testConsumeChar()
+      expect(lexer.testOffset()).toBe(2)
     })
   })
 
-  describe('match', () => {
+  describe('matchChar', () => {
     it('returns true and consumes when current character equals expected', () => {
       const lexer = new TestableLexer('ab')
-      expect(lexer.testMatch('a')).toBe(true)
+      expect(lexer.testMatchChar('a')).toBe(true)
       expect(lexer.testPeek(0)).toBe('b')
     })
 
     it('returns false and does not consume when current character differs', () => {
       const lexer = new TestableLexer('ab')
-      expect(lexer.testMatch('x')).toBe(false)
+      expect(lexer.testMatchChar('x')).toBe(false)
       expect(lexer.testPeek(0)).toBe('a')
     })
 
     it('returns false when at end', () => {
       const lexer = new TestableLexer('a')
-      lexer.testAdvance()
-      expect(lexer.testMatch('a')).toBe(false)
+      lexer.testConsumeChar()
+      expect(lexer.testMatchChar('a')).toBe(false)
     })
   })
 
@@ -158,17 +167,29 @@ describe('Lexer (base)', () => {
       expect(lexer.testPeek(0)).toBe('a')
     })
 
-    it('leaves position unchanged on partial match', () => {
+    it('leaves the cursor unchanged on partial match', () => {
       const lexer = new TestableLexer('ab')
       expect(lexer.testMatchString('abc')).toBe(false)
-      expect(lexer.testGetPosition()).toEqual({ line: 1, column: 1 })
+      expect(lexer.testOffset()).toBe(0)
     })
   })
 
-  describe('getPosition', () => {
-    it('returns line 1 column 1 at start', () => {
+  describe('spanFrom', () => {
+    it('returns a half-open span from a saved start to current offset', () => {
       const lexer = new TestableLexer('x')
-      expect(lexer.testGetPosition()).toEqual({ line: 1, column: 1 })
+      lexer.testConsumeChar()
+      expect(lexer.testSpanFrom(0)).toEqual({ start: 0, end: 1 })
+    })
+
+    it('starts the lex window at a document offset', () => {
+      const doc = 'a'.repeat(100) + 'x'
+      const lexer = new TestableLexer(doc, 100, 101)
+      expect(lexer.testOffset()).toBe(100)
+    })
+
+    it('rejects lex ranges outside the source document', () => {
+      expect(() => new TestableLexer('abc', 0, 4)).toThrow(RangeError)
+      expect(() => new TestableLexer('abc', 2, 1)).toThrow(RangeError)
     })
   })
 
@@ -181,8 +202,8 @@ describe('Lexer (base)', () => {
     it('calls scanToken until isAtEnd and returns all emitted tokens', () => {
       const tokens = new TestableLexer('ab').tokenize()
       expect(tokens).toHaveLength(2)
-      expect(tokens[0]!.position).toEqual({ line: 1, column: 1 })
-      expect(tokens[1]!.position).toEqual({ line: 1, column: 2 })
+      expect(tokens[0]!.span).toEqual({ start: 0, end: 1 })
+      expect(tokens[1]!.span).toEqual({ start: 1, end: 2 })
     })
 
     it('stops when isAtEnd becomes true', () => {

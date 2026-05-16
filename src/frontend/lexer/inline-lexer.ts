@@ -1,145 +1,111 @@
-import { Lexer } from './lexer.js'
+import { Lexer } from 'src/frontend/lexer/lexer.js'
+import type { SourceContext } from 'src/frontend/source-context.js'
 import type {
+  BacktickRunToken,
+  DelimiterRunToken,
+  EscapedTextToken,
   InlineToken,
-  SourcePosition,
+  LeftBracketToken,
+  LeftParenToken,
+  RightBracketToken,
+  RightParenToken,
   TextToken,
-  EmphasisStartToken,
-  EmphasisEndToken,
-  StrongStartToken,
-  StrongEndToken,
-  CodeStartToken,
-  CodeEndToken,
-  LinkStartToken,
-  LinkTextEndToken,
-  LinkUrlToken,
-  LinkEndToken,
 } from 'src/types/tokens.js'
 
-const INLINE_DELIMITERS = '*_`[]'
+const INLINE_DELIMITERS = '*_`[]()\\'
+const ESCAPABLE = /[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/
 
 export class InlineLexer extends Lexer<InlineToken> {
-  private inCodeSpan = false
-  private emphasisMarker: '*' | '_' | null = null
-  private strongMarker: '**' | '__' | null = null
+  /**
+   * @param context document source context
+   * @param range utf-16 span to lex
+   */
+  constructor(context: SourceContext, range = context.span) {
+    super(context, range)
+  }
 
   protected scanToken(): void {
-    const pos = this.getPosition()
+    const start = this.offset()
 
-    if (this.tryStrong(pos)) return
-    if (this.tryEmphasis(pos)) return
-    if (this.tryCodeSpan(pos)) return
-    if (this.tryLink(pos)) return
+    if (this.tryEscape(start)) return
+    if (this.tryBacktickRun(start)) return
+    if (this.tryDelimiterRun(start)) return
+    if (this.tryPunctuation(start)) return
 
-    const content = this.readUntilOneOf(INLINE_DELIMITERS)
+    this.readUntilOneOf(INLINE_DELIMITERS)
 
-    if (content.length > 0) {
-      this.emit<TextToken>({ type: 'text', position: pos, content })
+    if (this.offset() > start) {
+      this.emit<TextToken>({ type: 'text', span: this.spanFrom(start) })
     }
   }
 
-  /** returns true if strong (** or __) was matched and emitted. */
-  private tryStrong(pos: SourcePosition): boolean {
-    if (this.matchString('**')) {
-      if (this.strongMarker === null) {
-        this.emit<StrongStartToken>({ type: 'strongStart', position: pos, marker: '**' })
-        this.strongMarker = '**'
-      } else if (this.strongMarker === '**') {
-        this.emit<StrongEndToken>({ type: 'strongEnd', position: pos, marker: '**' })
-        this.strongMarker = null
-      } else {
-        this.emit<TextToken>({ type: 'text', position: pos, content: '**' })
-      }
+  private tryEscape(start: number): boolean {
+    if (!this.matchChar('\\')) return false
+
+    const escaped = this.peek()
+
+    if (ESCAPABLE.test(escaped)) {
+      this.consumeChar()
+      this.emit<EscapedTextToken>({
+        type: 'escapedText',
+        span: this.spanFrom(start),
+        contentSpan: { start: start + 1, end: this.offset() },
+      })
 
       return true
     }
 
-    if (this.matchString('__')) {
-      if (this.strongMarker === null) {
-        this.emit<StrongStartToken>({ type: 'strongStart', position: pos, marker: '__' })
-        this.strongMarker = '__'
-      } else if (this.strongMarker === '__') {
-        this.emit<StrongEndToken>({ type: 'strongEnd', position: pos, marker: '__' })
-        this.strongMarker = null
-      } else {
-        this.emit<TextToken>({ type: 'text', position: pos, content: '__' })
-      }
-
-      return true
-    }
-
-    return false
-  }
-
-  /** returns true if emphasis (* or _) was matched and emitted. */
-  private tryEmphasis(pos: SourcePosition): boolean {
-    if (this.match('*')) {
-      if (this.emphasisMarker === null) {
-        this.emit<EmphasisStartToken>({ type: 'emphasisStart', position: pos, marker: '*' })
-        this.emphasisMarker = '*'
-      } else if (this.emphasisMarker === '*') {
-        this.emit<EmphasisEndToken>({ type: 'emphasisEnd', position: pos, marker: '*' })
-        this.emphasisMarker = null
-      } else {
-        this.emit<TextToken>({ type: 'text', position: pos, content: '*' })
-      }
-
-      return true
-    }
-
-    if (this.match('_')) {
-      if (this.emphasisMarker === null) {
-        this.emit<EmphasisStartToken>({ type: 'emphasisStart', position: pos, marker: '_' })
-        this.emphasisMarker = '_'
-      } else if (this.emphasisMarker === '_') {
-        this.emit<EmphasisEndToken>({ type: 'emphasisEnd', position: pos, marker: '_' })
-        this.emphasisMarker = null
-      } else {
-        this.emit<TextToken>({ type: 'text', position: pos, content: '_' })
-      }
-
-      return true
-    }
-
-    return false
-  }
-
-  /** returns true if code span (`) was matched and emitted. */
-  private tryCodeSpan(pos: SourcePosition): boolean {
-    if (!this.match('`')) return false
-
-    this.emit<CodeStartToken | CodeEndToken>({
-      type: this.inCodeSpan ? 'codeEnd' : 'codeStart',
-      position: pos,
-      marker: '`',
-    })
-
-    this.inCodeSpan = !this.inCodeSpan
+    this.emit<TextToken>({ type: 'text', span: this.spanFrom(start) })
 
     return true
   }
 
-  /** returns true if link [ ] or ](url) was matched and emitted. */
-  private tryLink(pos: SourcePosition): boolean {
-    if (this.match('[')) {
-      this.emit<LinkStartToken>({ type: 'linkStart', position: pos })
+  private tryBacktickRun(start: number): boolean {
+    if (this.peek() !== '`') return false
+
+    const length = this.consumeRun('`')
+    this.emit<BacktickRunToken>({ type: 'backtickRun', span: this.spanFrom(start), length })
+
+    return true
+  }
+
+  private tryDelimiterRun(start: number): boolean {
+    const marker = this.peek()
+
+    if (marker !== '*' && marker !== '_') return false
+
+    const length = this.consumeRun(marker)
+    this.emit<DelimiterRunToken>({
+      type: 'delimiterRun',
+      span: this.spanFrom(start),
+      marker,
+      length,
+    })
+
+    return true
+  }
+
+  private tryPunctuation(start: number): boolean {
+    if (this.matchChar('[')) {
+      this.emit<LeftBracketToken>({ type: 'leftBracket', span: this.spanFrom(start) })
 
       return true
     }
 
-    if (this.match(']')) {
-      this.emit<LinkTextEndToken>({ type: 'linkTextEnd', position: pos })
+    if (this.matchChar(']')) {
+      this.emit<RightBracketToken>({ type: 'rightBracket', span: this.spanFrom(start) })
 
-      if (this.peek() === '(') {
-        this.advance()
+      return true
+    }
 
-        const urlStartPos = this.getPosition()
-        const url = this.readUntil(')')
-        const endPos = this.getPosition()
+    if (this.matchChar('(')) {
+      this.emit<LeftParenToken>({ type: 'leftParen', span: this.spanFrom(start) })
 
-        this.advance()
-        this.emit<LinkUrlToken>({ type: 'linkUrl', position: urlStartPos, url })
-        this.emit<LinkEndToken>({ type: 'linkEnd', position: endPos })
-      }
+      return true
+    }
+
+    if (this.matchChar(')')) {
+      this.emit<RightParenToken>({ type: 'rightParen', span: this.spanFrom(start) })
 
       return true
     }
@@ -147,27 +113,24 @@ export class InlineLexer extends Lexer<InlineToken> {
     return false
   }
 
-  private readUntil(terminator: string): string {
-    let result = ''
+  private consumeRun(char: string): number {
+    let length = 0
 
-    while (!this.isAtEnd() && this.peek() !== terminator) {
-      result += this.advance()
+    while (this.peek() === char) {
+      this.consumeChar()
+      length++
     }
 
-    return result
+    return length
   }
 
-  private readUntilOneOf(delimiters: string): string {
-    let result = ''
-
+  private readUntilOneOf(delimiters: string): void {
     while (!this.isAtEnd()) {
       const char = this.peek()
 
       if (delimiters.includes(char)) break
 
-      result += this.advance()
+      this.consumeChar()
     }
-
-    return result
   }
 }

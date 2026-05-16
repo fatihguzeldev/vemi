@@ -1,19 +1,25 @@
-import type { BaseToken, SourcePosition } from 'src/types/tokens.js'
+import type { SourceContext } from 'src/frontend/source-context.js'
+import type { BaseToken, SourceSpan } from 'src/types/tokens.js'
 
 /**
  * a lexer instance is single-use.
  * create a new instance for each input source.
  */
 export abstract class Lexer<TToken extends BaseToken<string>> {
-  protected readonly source: string
+  protected readonly context: SourceContext
   protected readonly tokens: TToken[] = []
+  /** current UTF-16 index into `context.source` in [`rangeStart`, `rangeEnd`] */
+  protected current: number
+  protected readonly rangeStart: number
+  protected readonly rangeEnd: number
 
-  protected current = 0
-  protected line = 1
-  protected column = 1
+  constructor(context: SourceContext, range: SourceSpan = context.span) {
+    context.assertSpan(range)
 
-  constructor(source: string) {
-    this.source = source
+    this.context = context
+    this.rangeStart = range.start
+    this.rangeEnd = range.end
+    this.current = range.start
   }
 
   /**
@@ -35,38 +41,29 @@ export abstract class Lexer<TToken extends BaseToken<string>> {
   // --- utility methods ---
 
   protected isAtEnd(): boolean {
-    return this.current >= this.source.length
+    return this.current >= this.rangeEnd
   }
 
   protected peek(offset = 0): string {
     const index = this.current + offset
 
-    if (index >= this.source.length) return '\0'
+    if (index >= this.rangeEnd) return '\0'
 
-    return this.source[index]!
+    return this.context.source[index]!
   }
 
-  protected advance(): string {
+  protected consumeChar(): string {
     if (this.isAtEnd()) return '\0'
 
-    const char = this.source[this.current++]
-
-    if (char === '\n') {
-      this.line++
-      this.column = 1
-    } else {
-      this.column++
-    }
-
-    return char!
+    return this.context.source[this.current++]!
   }
 
-  protected match(expected: string): boolean {
+  protected matchChar(expected: string): boolean {
     if (this.isAtEnd()) return false
 
-    if (this.source[this.current] !== expected) return false
+    if (this.context.source[this.current] !== expected) return false
 
-    this.advance()
+    this.consumeChar()
 
     return true
   }
@@ -80,17 +77,18 @@ export abstract class Lexer<TToken extends BaseToken<string>> {
     }
 
     for (let i = 0; i < expected.length; i++) {
-      this.advance()
+      this.consumeChar()
     }
 
     return true
   }
 
-  protected getPosition(): SourcePosition {
-    return {
-      line: this.line,
-      column: this.column,
-    }
+  protected offset(): number {
+    return this.current
+  }
+
+  protected spanFrom(start: number): SourceSpan {
+    return { start, end: this.current }
   }
 
   /**

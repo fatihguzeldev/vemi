@@ -1,9 +1,17 @@
-/**
- * source position for error reporting and syntax highlighting
- */
+/** UTF-16 code-unit offset into a source document. */
+export type SourceOffset = number
+
+/** half-open source span: `[start, end)`, measured in UTF-16 code units. */
+export type SourceSpan = {
+  start: SourceOffset
+  end: SourceOffset
+}
+
+/** derived source point for diagnostics and human-facing messages. */
 export type SourcePosition = {
   line: number
   column: number
+  offset: SourceOffset
 }
 
 /**
@@ -35,31 +43,26 @@ export type BlockToken =
  */
 export type InlineToken =
   | TextToken
-  | EmphasisStartToken
-  | EmphasisEndToken
-  | StrongStartToken
-  | StrongEndToken
-  | CodeStartToken
-  | CodeEndToken
-  | LinkStartToken
-  | LinkTextEndToken
-  | LinkUrlToken
-  | LinkEndToken
+  | EscapedTextToken
+  | DelimiterRunToken
+  | BacktickRunToken
+  | LeftBracketToken
+  | RightBracketToken
+  | LeftParenToken
+  | RightParenToken
 
 /**
- * base token structure with position information.
+ * base token structure with source span information.
  */
 export type BaseToken<T extends string> = {
   type: T
-  position: SourcePosition
+  span: SourceSpan
 }
 
 /**
  * text line token - represents a line of text content.
  */
-export type TextLineToken = BaseToken<'textLine'> & {
-  content: string
-}
+export type TextLineToken = BaseToken<'textLine'> & {}
 
 /**
  * blank line token - represents an empty line (separator).
@@ -71,7 +74,8 @@ export type BlankLineToken = BaseToken<'blankLine'> & {}
  */
 export type HeadingToken = BaseToken<'heading'> & {
   level: 1 | 2 | 3 | 4 | 5 | 6
-  content: string
+  /** title text after `#` markers and required whitespace. */
+  contentSpan: SourceSpan
 }
 
 /**
@@ -87,7 +91,6 @@ export type CodeBlockStartToken = BaseToken<'codeBlockStart'> & {
  * used for syntax highlighting, line numbers, and building the code block node.
  */
 export type CodeBlockContentToken = BaseToken<'codeBlockContent'> & {
-  content: string
   lineInBlock: number
 }
 
@@ -103,7 +106,8 @@ export type CodeBlockEndToken = BaseToken<'codeBlockEnd'> & {
  */
 export type ListItemToken = BaseToken<'listItem'> & {
   marker: string // the marker used (-, *, +)
-  content: string
+  /** list item text after marker and required whitespace. */
+  contentSpan: SourceSpan
 }
 
 /**
@@ -111,83 +115,62 @@ export type ListItemToken = BaseToken<'listItem'> & {
  */
 export type OrderedListItemToken = BaseToken<'orderedListItem'> & {
   number: number
-  content: string
+  /** list item text after `n.` and required whitespace. */
+  contentSpan: SourceSpan
 }
 
 /**
  * blockquote token - represents a blockquote marker.
  */
 export type BlockquoteToken = BaseToken<'blockquote'> & {
-  content: string
+  /** quoted text after `>` and optional whitespace. */
+  contentSpan: SourceSpan
 }
 
 /**
  * plain text token - represents a sequence of characters.
  */
-export type TextToken = BaseToken<'text'> & {
-  content: string
+export type TextToken = BaseToken<'text'> & {}
+
+/**
+ * escaped text token - a backslash escape whose semantic text is `contentSpan`.
+ */
+export type EscapedTextToken = BaseToken<'escapedText'> & {
+  /** escaped character without the leading backslash. */
+  contentSpan: SourceSpan
 }
 
 /**
- * emphasis start token - marks the beginning of italic text.
+ * delimiter run token - one or more `*` or `_` characters.
  */
-export type EmphasisStartToken = BaseToken<'emphasisStart'> & {
-  marker: string // * or _
+export type DelimiterRunToken = BaseToken<'delimiterRun'> & {
+  marker: '*' | '_'
+  length: number
 }
 
 /**
- * emphasis end token - marks the end of italic text.
+ * backtick run token - one or more `` ` `` characters.
  */
-export type EmphasisEndToken = BaseToken<'emphasisEnd'> & {
-  marker: string
+export type BacktickRunToken = BaseToken<'backtickRun'> & {
+  length: number
 }
 
 /**
- * strong start token - marks the beginning of bold text.
+ * left bracket token - raw `[` character.
  */
-export type StrongStartToken = BaseToken<'strongStart'> & {
-  marker: string // ** or __
-}
+export type LeftBracketToken = BaseToken<'leftBracket'> & {}
 
 /**
- * strong end token - marks the end of bold text.
+ * right bracket token - raw `]` character.
  */
-export type StrongEndToken = BaseToken<'strongEnd'> & {
-  marker: string
-}
+export type RightBracketToken = BaseToken<'rightBracket'> & {}
 
 /**
- * code start token - marks the beginning of inline code.
+ * left parenthesis token - raw `(` character.
  */
-export type CodeStartToken = BaseToken<'codeStart'> & {
-  marker: string // `
-}
+export type LeftParenToken = BaseToken<'leftParen'> & {}
 
 /**
- * code end token - marks the end of inline code.
+ * right parenthesis token - raw `)` character.
  */
-export type CodeEndToken = BaseToken<'codeEnd'> & {
-  marker: string
-}
-
-/**
- * link start token - marks the beginning of a link (`[`).
- */
-export type LinkStartToken = BaseToken<'linkStart'> & {}
-
-/**
- * link text end token - marks the end of link text (`]`).
- */
-export type LinkTextEndToken = BaseToken<'linkTextEnd'> & {}
-
-/**
- * link url token - contains the url portion of a link.
- */
-export type LinkUrlToken = BaseToken<'linkUrl'> & {
-  url: string
-}
-
-/**
- * link end token - marks the end of a link (`)`).
- */
-export type LinkEndToken = BaseToken<'linkEnd'> & {}
+export type RightParenToken = BaseToken<'rightParen'> & {}

@@ -1,83 +1,106 @@
 import { describe, it, expect } from 'vitest'
-import { InlineLexer } from '../../../frontend/lexer/inline-lexer.js'
+import { InlineLexer } from 'src/frontend/lexer/inline-lexer.js'
+import { SourceContext } from 'src/frontend/source-context.js'
 import type {
+  BacktickRunToken,
+  DelimiterRunToken,
+  EscapedTextToken,
+  InlineToken,
   TextToken,
-  EmphasisStartToken,
-  EmphasisEndToken,
-  StrongStartToken,
-  StrongEndToken,
-  CodeStartToken,
-  CodeEndToken,
-  LinkStartToken,
-  LinkTextEndToken,
-  LinkUrlToken,
-  LinkEndToken,
 } from 'src/types/tokens.js'
+
+function lex(
+  source: string,
+  start = 0,
+  end = source.length,
+): {
+  context: SourceContext
+  tokens: InlineToken[]
+} {
+  const context = new SourceContext(source)
+
+  return { context, tokens: new InlineLexer(context, { start, end }).tokenize() }
+}
 
 describe('InlineLexer', () => {
   it('returns no tokens for empty input', () => {
-    expect(new InlineLexer('').tokenize()).toEqual([])
+    expect(lex('', 0, 0).tokens).toEqual([])
   })
 
-  it('tokenizes plain text as one text token with content and position', () => {
-    const tokens = new InlineLexer('hello').tokenize()
+  it('tokenizes plain text as one text token with a span', () => {
+    const { context, tokens } = lex('hello')
     expect(tokens).toHaveLength(1)
     const t = tokens[0] as TextToken
     expect(t.type).toBe('text')
-    expect(t.content).toBe('hello')
-    expect(t.position).toEqual({ line: 1, column: 1 })
+    expect(t.span).toEqual({ start: 0, end: 5 })
+    expect(context.slice(t.span)).toBe('hello')
   })
 
-  it('tokenizes emphasis with start, text, end and same marker', () => {
-    const tokens = new InlineLexer('*foo*').tokenize()
-    expect(tokens).toHaveLength(3)
-    const start = tokens[0] as EmphasisStartToken
-    expect(start.type).toBe('emphasisStart')
-    expect(start.marker).toBe('*')
-    const text = tokens[1] as TextToken
-    expect(text.type).toBe('text')
-    expect(text.content).toBe('foo')
-    const end = tokens[2] as EmphasisEndToken
-    expect(end.type).toBe('emphasisEnd')
-    expect(end.marker).toBe('*')
+  it('tokenizes delimiter runs without deciding their meaning', () => {
+    const { context, tokens } = lex('***foo___')
+
+    expect(tokens.map((t) => t.type)).toEqual(['delimiterRun', 'text', 'delimiterRun'])
+    expect(tokens[0]).toMatchObject<Partial<DelimiterRunToken>>({
+      type: 'delimiterRun',
+      marker: '*',
+      length: 3,
+      span: { start: 0, end: 3 },
+    })
+    expect(context.slice(tokens[1]!.span)).toBe('foo')
+    expect(tokens[2]).toMatchObject<Partial<DelimiterRunToken>>({
+      type: 'delimiterRun',
+      marker: '_',
+      length: 3,
+      span: { start: 6, end: 9 },
+    })
   })
 
-  it('tokenizes strong with start, text, end', () => {
-    const tokens = new InlineLexer('**bar**').tokenize()
-    expect(tokens).toHaveLength(3)
-    expect((tokens[0] as StrongStartToken).type).toBe('strongStart')
-    expect((tokens[0] as StrongStartToken).marker).toBe('**')
-    expect((tokens[1] as TextToken).content).toBe('bar')
-    expect((tokens[2] as StrongEndToken).type).toBe('strongEnd')
+  it('tokenizes backtick runs without consuming code content', () => {
+    const { context, tokens } = lex('``x``')
+
+    expect(tokens.map((t) => t.type)).toEqual(['backtickRun', 'text', 'backtickRun'])
+    expect(tokens[0]).toMatchObject<Partial<BacktickRunToken>>({
+      type: 'backtickRun',
+      length: 2,
+      span: { start: 0, end: 2 },
+    })
+    expect(context.slice(tokens[1]!.span)).toBe('x')
+    expect(tokens[2]).toMatchObject<Partial<BacktickRunToken>>({
+      type: 'backtickRun',
+      length: 2,
+      span: { start: 3, end: 5 },
+    })
   })
 
-  it('tokenizes inline code with start, content, end', () => {
-    const tokens = new InlineLexer('`x`').tokenize()
-    expect(tokens).toHaveLength(3)
-    expect((tokens[0] as CodeStartToken).type).toBe('codeStart')
-    expect((tokens[1] as TextToken).content).toBe('x')
-    expect((tokens[2] as CodeEndToken).type).toBe('codeEnd')
+  it('tokenizes brackets and parentheses as raw punctuation', () => {
+    const { context, tokens } = lex('[x](u)')
+
+    expect(tokens.map((t) => t.type)).toEqual([
+      'leftBracket',
+      'text',
+      'rightBracket',
+      'leftParen',
+      'text',
+      'rightParen',
+    ])
+    expect(context.slice(tokens[1]!.span)).toBe('x')
+    expect(context.slice(tokens[4]!.span)).toBe('u')
   })
 
-  it('tokenizes link as linkStart, text, linkTextEnd, linkUrl, linkEnd with url', () => {
-    const tokens = new InlineLexer('[click](https://example.org)').tokenize()
-    expect(tokens).toHaveLength(5)
-    expect((tokens[0] as LinkStartToken).type).toBe('linkStart')
-    expect((tokens[1] as TextToken).content).toBe('click')
-    expect((tokens[2] as LinkTextEndToken).type).toBe('linkTextEnd')
-    const urlToken = tokens[3] as LinkUrlToken
-    expect(urlToken.type).toBe('linkUrl')
-    expect(urlToken.url).toBe('https://example.org')
-    expect((tokens[4] as LinkEndToken).type).toBe('linkEnd')
+  it('tokenizes backslash escapes as escaped text', () => {
+    const { context, tokens } = lex('\\*x')
+
+    expect(tokens.map((t) => t.type)).toEqual(['escapedText', 'text'])
+    const escaped = tokens[0] as EscapedTextToken
+    expect(escaped.span).toEqual({ start: 0, end: 2 })
+    expect(escaped.contentSpan).toEqual({ start: 1, end: 2 })
+    expect(context.slice(escaped.contentSpan)).toBe('*')
   })
 
-  it('treats wrong strong closer as literal text', () => {
-    const tokens = new InlineLexer('**emphasis__').tokenize()
-    expect(tokens).toHaveLength(3)
-    expect((tokens[0] as StrongStartToken).type).toBe('strongStart')
-    expect((tokens[1] as TextToken).content).toBe('emphasis')
-    const literal = tokens[2] as TextToken
-    expect(literal.type).toBe('text')
-    expect(literal.content).toBe('__')
+  it('aligns spans with the document string when the lex range is not at offset 0', () => {
+    const doc = 'x'.repeat(50) + 'hi'
+    const { tokens } = lex(doc, 50, 52)
+    expect(tokens).toHaveLength(1)
+    expect((tokens[0] as TextToken).span).toEqual({ start: 50, end: 52 })
   })
 })
