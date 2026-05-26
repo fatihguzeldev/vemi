@@ -1,6 +1,6 @@
 # vemi
 
-[![version](https://img.shields.io/badge/version-0.0.1-blue)](https://github.com/fatihguzeldev/vemi)
+[![npm version](https://img.shields.io/npm/v/vemi.svg)](https://www.npmjs.com/package/vemi)
 [![license: ISC](https://img.shields.io/badge/license-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 
 A small compiler for markdown-like text.

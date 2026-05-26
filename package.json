@@ -3,6 +3,16 @@
   "version": "0.0.1",
   "type": "module",
   "description": "a tiny, type-safe content compiler.",
+  "keywords": [
+    "markdown",
+    "compiler",
+    "html",
+    "parser",
+    "ast",
+    "typescript",
+    "content",
+    "markup"
+  ],
   "homepage": "https://github.com/fatihguzeldev/vemi#readme",
   "bugs": {
     "url": "https://github.com/fatihguzeldev/vemi/issues"
