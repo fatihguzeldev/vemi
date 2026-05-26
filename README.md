@@ -1,6 +1,6 @@
 # vemi
 
-[![npm version](https://img.shields.io/npm/v/vemi.svg)](https://www.npmjs.com/package/vemi)
+[![npm version](https://img.shields.io/npm/v/@fatihguzeldev/vemi.svg)](https://www.npmjs.com/package/@fatihguzeldev/vemi)
 [![license: ISC](https://img.shields.io/badge/license-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 
 A small compiler for markdown-like text.
@@ -10,7 +10,7 @@ Early release. Syntax and public API may change.
 ## Install
 
 ```bash
-npm install vemi
+npm install @fatihguzeldev/vemi
 ```
 
 Node 18+. ESM only. TypeScript types are included.
@@ -18,7 +18,7 @@ Node 18+. ESM only. TypeScript types are included.
 ## Quick start
 
 ```ts
-import { compileHtml } from 'vemi'
+import { compileHtml } from '@fatihguzeldev/vemi'
 
 const html = compileHtml('# Hello **world**')
 // <h1>Hello <strong>world</strong></h1>
@@ -54,7 +54,7 @@ Default output is semantic HTML with safety defaults:
 - CSS classes and heading `id` attributes are opt-in
 
 ```ts
-import { compileHtml } from 'vemi'
+import { compileHtml } from '@fatihguzeldev/vemi'
 
 const html = compileHtml('## Install\n\n## Install', {
   headingIds: true,
@@ -82,7 +82,7 @@ Exported types: `Root`, `BlockNode`, `InlineNode`, `HtmlRenderOptions`, `HtmlRoo
 ### Parse and render separately
 
 ```ts
-import { parseDocument, renderHtml } from 'vemi'
+import { parseDocument, renderHtml } from '@fatihguzeldev/vemi'
 
 const ast = parseDocument('Hello *world*')
 const html = renderHtml(ast)

@@ -1,5 +1,5 @@
 {
-  "name": "vemi",
+  "name": "@fatihguzeldev/vemi",
   "version": "0.0.1",
   "type": "module",
   "description": "a tiny, type-safe content compiler.",
