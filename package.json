@@ -34,7 +34,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "prepare": "husky",
+    "prepublishOnly": "npm run build && npm run test:run",
     "test": "vitest",
     "test:run": "vitest run"
   },
