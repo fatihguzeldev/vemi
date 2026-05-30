@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#ffffff"/>
+
+  <text
+    x="600"
+    y="300"
+    text-anchor="middle"
+    font-family="ui-sans-serif, system-ui, -apple-system, sans-serif"
+    font-size="108"
+    font-weight="600"
+    letter-spacing="-0.03em"
+    fill="#111111"
+  >vemi</text>
+
+  <text
+    x="443.46"
+    y="372"
+    font-family="ui-sans-serif, system-ui, -apple-system, sans-serif"
+    font-size="26"
+    font-weight="400"
+    letter-spacing="-0.01em"
+    fill="#737373"
+  >markdown-like text</text>
+
+  <path
+    d="M 667.21 366 H 677.21 M 673.21 360 L 679.21 366 L 673.21 372"
+    stroke="#737373"
+    stroke-width="2"
+    fill="none"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <text
+    x="691.21"
+    y="372"
+    font-family="ui-sans-serif, system-ui, -apple-system, sans-serif"
+    font-size="26"
+    font-weight="400"
+    letter-spacing="-0.01em"
+    fill="#737373"
+  >HTML</text>
+</svg>

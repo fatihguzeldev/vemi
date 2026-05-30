@@ -40,6 +40,8 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "dev:site": "npm run dev --workspace=vemi-tour",
+    "build:site": "npm run build --workspace=vemi-tour",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -48,6 +50,9 @@
     "test": "vitest",
     "test:run": "vitest run"
   },
+  "workspaces": [
+    "site"
+  ],
   "devDependencies": {
     "@commitlint/cli": "20.4.2",
     "@commitlint/config-conventional": "20.4.2",

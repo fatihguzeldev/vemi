@@ -3,6 +3,7 @@ node_modules/
 
 # build output
 dist/
+site/dist/
 coverage/
 
 # logs

@@ -1,0 +1,23 @@
+{
+  "name": "vemi-tour",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "assets": "node scripts/generate-assets.mjs",
+    "build": "npm run assets && tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide-preact": "^0.468.0",
+    "preact": "^10.25.4"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "1.0.0",
+    "@preact/preset-vite": "^2.9.4",
+    "@types/node": "^22.10.5",
+    "sharp": "0.34.5",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}
