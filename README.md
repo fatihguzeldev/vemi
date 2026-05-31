@@ -5,6 +5,8 @@
 
 A small compiler for markdown-like text.
 
+Plain text in, HTML out. [vemi.fatihguzel.dev](https://vemi.fatihguzel.dev) is a mini lecture on what happens in between.
+
 Early release. Syntax and public API may change.
 
 ## Install
@@ -90,6 +92,28 @@ const html = renderHtml(ast)
 ```
 
 Use `compileHtml` to compile in one step. Use `parseDocument` when you need the AST for inspection, transforms, or another target format later.
+
+## Contributing
+
+Contributions are welcome. Bug fixes, tests, docs, grammar edge cases, and improvements to the [mini lecture](https://vemi.fatihguzel.dev) site are all fair game.
+
+```bash
+git clone https://github.com/fatihguzeldev/vemi.git
+cd vemi
+npm install
+npm test
+```
+
+For the interactive site:
+
+```bash
+npm run dev:site
+npm run build:site
+```
+
+Open an issue if you want to discuss a bigger change first. Pull requests are appreciated. Use [conventional commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, etc.). Run `npm test` and `npm run lint` before submitting.
+
+Early release means APIs and syntax may still move. If your change affects public behavior, add or update tests in `src/__tests__/`.
 
 ## License
 
